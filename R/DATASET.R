@@ -9,13 +9,14 @@ if(fs::dir_exists("data-raw") & fs::file_exists("data-raw/cgfs.rds")) {
   years <- 2010:2021
   qs <- 4
   surveys <- "FR-CGFS"
-  res <- list()
+  # res <- list()
   for(y in 1:length(years)) {
     print(years[y])
-    res[[y]] <- getCPUELength(surveys, year = years[y], quarter = qs)
+    h   <- icesDatras::getHHdata(surveys, year = years[y], quarter = qs)
+    h   <- icesDatras::getHLdata(surveys, year = years[y], quarter = qs)
+  
   }
-  raw <-
-    bind_rows(res)
+  raw <- bind_rows(res)
 
   # head(raw)
   # icesDatras::checkSurveyYearOK("FR-CGFS", 2021)
