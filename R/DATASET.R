@@ -4,6 +4,9 @@ library(icesDatras)
 
 # if(fs::dir_exists("data-raw") & fs::file_exists("data-raw/cgfs.rds")) {
 #   stop("You have what it takes")
+# hh <- read_rds("data-raw/cgfs.rds")$hh
+# hl <- read_rds("data-raw/cgfs.rds")$hl
+
 # } else {
   fs::dir_create("data-raw")
   # datadownload -----------------------------------------------------------------
@@ -56,15 +59,21 @@ library(icesDatras)
   for(i in 1:length(species)) {
     length.range <-
       rbyls |>
-      filter(species == species[i]) |>
+      filter(species == species[i],
+             latin   == latin[i],
+             english_name == english_name[i]) |>
       summarise(min = min(length, na.rm=TRUE),
                 max = max(length, na.rm=TRUE))
     g[[i]] <-
       expand_grid(year = as.character(years),
                   species = species[[i]],
-                  length = length.range$min:length.range$max)
+                  length = length.range$min:length.range$max) |>
+      left_join(dplyr::distinct(rbyls,
+                                species, latin, english_name),
+                by="species")
   }
   g <- bind_rows(g)
+  
   rbyls <-
     rbyls |>
     right_join(g) |>
@@ -77,8 +86,7 @@ library(icesDatras)
     # Mean catch over all the stations
     summarise(N = mean(n),
               B = mean(b),
-              .groups = "drop") |>
-    dplyr::select(species, latin, english_name, year, length, N, B)
+              .groups = "drop") 
 
   rbys <-
     rbyls |>

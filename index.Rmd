@@ -15,8 +15,9 @@ runtime: shiny
 library(tidyverse)
 source("R/functions.R")
 d <- read_rds("data-raw/cgfs.rds")
+ 
 d$rbyl <- d$rbyl |> mutate(sid = species)
-d$rbl <- d$rbl |> mutate(sid = species)
+d$rbl  <- d$rbl  |> mutate(sid = species)
 d$boot <- d$boot |> mutate(sid = species)
 d$rbys <- d$rbys |> mutate(sid = species)
 
@@ -40,13 +41,15 @@ Sidebar {.sidebar data-width=175}
 =====================================
 
 ```{r}
+# input <- list()
 selectInput(inputId = "Species", label = "Species:",
-            choices = species, selected = "Gadus morhua")
-
+            choices = species, selected = "HOM")
+# input$Species = "HOM"
 
 radioButtons(inputId = "Type", label = "Choice:", 
              choices = list("Numbers", "Mass"),
              selected = list("Numbers"))
+# input$Type = "N"
 ```
 
 Trial stuff - draft explanation (in Icelandic) [here](http://www.hafro.is/~einarhj/skyringar.html).
@@ -66,7 +69,7 @@ renderPlot({
   {
     gg_length(d$rbl, d$rbyl, input$Species, N, lab = "Mean numbers per tow")
   } else {
-    gg_length(d$rbl, d$rbyl, input$Species, B, lab = "Mean kg per tow")
+    gg_length(d$rbl, d$rbyl, input$species, B, lab = "Mean kg per tow")
   }
 })
 ```
