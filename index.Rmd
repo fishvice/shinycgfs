@@ -1,0 +1,144 @@
+---
+title: "CGFS"
+output:
+  flexdashboard::flex_dashboard:
+runtime: shiny
+---
+
+
+```{r eval = FALSE}
+# TODO: Check why numbers in length plot here are different from numbers in
+#       fyrirkongenekkiprest
+```
+
+```{r}
+library(tidyverse)
+source("R/functions.R")
+d <- read_rds("data-raw/cgfs.rds")
+d$rbyl <- d$rbyl |> mutate(sid = species)
+d$rbl <- d$rbl |> mutate(sid = species)
+d$boot <- d$boot |> mutate(sid = species)
+d$rbys <- d$rbys |> mutate(sid = species)
+
+p <-
+  ggplot() +
+  theme_void(base_size = 15) +
+  theme(legend.position = "none") +
+  scale_x_continuous(expand = expansion(0), breaks = seq(-40, 40, by = 2)) +
+  scale_y_continuous(expand = expansion(0), breaks = seq(50, 80, by = 1))
+
+
+
+species <- d$species
+names(species) <- species
+now.year <- max(d$rbyl$year)
+# xy <- d$rby |> filter(year == now.year) |> select(idx, lon, lat, lon2, lat2) |> distinct()
+```
+
+
+Sidebar {.sidebar data-width=175}
+=====================================
+
+```{r}
+selectInput(inputId = "Species", label = "Species:",
+            choices = species, selected = "Gadus morhua")
+
+
+radioButtons(inputId = "Type", label = "Choice:", 
+             choices = list("Numbers", "Mass"),
+             selected = list("Numbers"))
+```
+
+Trial stuff - draft explanation (in Icelandic) [here](http://www.hafro.is/~einarhj/skyringar.html).
+
+Main
+=====================================  
+
+Column {data-width=600}
+-------------------------------------
+
+### Catch by length
+
+
+```{r}
+renderPlot({
+  if(input$Type == "Numbers") 
+  {
+    gg_length(d$rbl, d$rbyl, input$Species, N, lab = "Mean numbers per tow")
+  } else {
+    gg_length(d$rbl, d$rbyl, input$Species, B, lab = "Mean kg per tow")
+  }
+})
+```
+
+
+Column {data-width=400}
+-------------------------------------
+
+### Mean catch and confidence intervals
+
+
+```{r}
+renderPlot({
+  if(input$Type == "Numbers") 
+  {
+    gg_boot(d$boot |> filter(var == "N"), input$Species, ylab = "Numbers per hour")
+  } else {
+    gg_boot(d$boot |> filter(var == "B"), input$Species, ylab = "Kg per hour")  
+  }
+})
+```
+
+### Catch in `r now.year`
+
+```{r}
+renderPlot({
+  if(input$Type == "Numbers") {
+    gg_bubble(d$rbys |> filter(year == 2022), input$Species, N) + theme(legend.position = "none")
+  } else {
+    gg_bubble(d$rbys |> filter(year == 2022), input$Species, B, lab = "Catch [kg]") + theme(legend.position = "Numbers")
+  }
+})
+```
+
+Spreads
+=====================================
+
+Column {.tabset}
+-------------------------------------
+
+### Catch per tow
+
+```{r}
+renderPlot({
+  if(input$Type == "Numbers") {
+    gg_bubble(d$rbys, input$Species, N)
+  } else {
+    gg_bubble(d$rbys, input$Species, B, lab = "Catch [kg]")
+  }
+})
+```
+
+### Probility of capture
+
+```{r, eval = FALSE}
+renderPlot({
+  data <- 
+    d$rbss %>% 
+    dplyr::filter(sid == input$Species) |> 
+    filter(!is.na(p))
+  ggplot() +
+    theme_void(base_size = 16) +
+    scale_x_continuous(expand = expansion(mult = 0)) +
+    scale_y_continuous(expand = expansion(mult = 0)) +
+    geom_tile(data = data, 
+              aes(lon, lat, fill = p), alpha = 0.7) +
+    geom_segment(data = xy, aes(lon, lat, xend = lon2, yend = lat2), colour = "red", linewidth = 1) +    
+    geom_polygon(data = geo::island, aes(lon, lat), fill = "grey") +
+    scale_fill_viridis_d(option = "B", direction = -1, drop = FALSE) +
+    ggplot2::labs(fill = "Líkindi [%]") +
+    theme(
+          legend.position = "top") +
+    coord_quickmap()
+})
+```

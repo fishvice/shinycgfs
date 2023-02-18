@@ -1,15 +1,27 @@
+---
+output: github_document
+---
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-# shinynscgfs
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+# shinycgfs
 
 Clone the directory via:
 
-    git clone https://github.com/fishvice/shinycgfs.git
+```
+git clone https://github.com/fishvice/shinycgfs.git
+```
 
 To get the show running do within the directory:
 
-``` r
+```{r, eval = FALSE}
 source("R/DATASET.R")  # takes a while, be patient
 rmarkdown::run()
 ```
