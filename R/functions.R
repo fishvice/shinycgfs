@@ -8,6 +8,8 @@ scale_latitude_ices <- function(min = 36, max = 84.5, step = 0.5, ...) {
   labels <- geo::d2ir(breaks, 0) %>% stringr::str_sub(1, 2)
   return(ggplot2::scale_y_continuous(name = NULL, breaks = breaks, labels = labels, ...))
 }
+
+# median=d$rbl; by.year=d$rbyl;SID=input$Species;lab = "Mean numbers per tow"
 gg_length <- function(median, by.year, SID, var, lab = "Fjöldi í hverju lengdarbili") {
 
   ggplot2::ggplot() +

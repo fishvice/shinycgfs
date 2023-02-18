@@ -49,7 +49,7 @@ selectInput(inputId = "Species", label = "Species:",
 radioButtons(inputId = "Type", label = "Choice:", 
              choices = list("Numbers", "Mass"),
              selected = list("Numbers"))
-# input$Type = "N"
+# input$Type = "Nu"
 ```
 
 Trial stuff - draft explanation (in Icelandic) [here](http://www.hafro.is/~einarhj/skyringar.html).
