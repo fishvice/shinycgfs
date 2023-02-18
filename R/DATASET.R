@@ -6,7 +6,7 @@ if(fs::dir_exists("data-raw") & fs::file_exists("data-raw/cgfs.rds")) {
   # datadownload -----------------------------------------------------------------
 
   library(icesDatras)
-  years <- 1991:2022
+  years <- 2010:2021
   qs <- 4
   surveys <- "FR-CGFS"
   res <- list()
@@ -17,6 +17,11 @@ if(fs::dir_exists("data-raw") & fs::file_exists("data-raw/cgfs.rds")) {
   raw <-
     bind_rows(res)
 
+  # head(raw)
+  # icesDatras::checkSurveyYearOK("FR-CGFS", 2021)
+  # icesDatras::getHHdata("FR-CGFS", 2021, 4)
+  # icesDatras::getCPUELength("FR-CGFS", 2021, 4)
+  
   # results by year, length and station ------------------------------------------
   rbyls <-
     raw |>
