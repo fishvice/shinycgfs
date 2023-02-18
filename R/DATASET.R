@@ -1,37 +1,39 @@
 library(tidyverse)
-if(fs::dir_exists("data-raw") & fs::file_exists("data-raw/cgfs.rds")) {
-  stop("You have what it takes")
-} else {
+library(tidydatras)  #devtools::install_github("fishvice/tidydatras")
+library(icesDatras)
+
+# if(fs::dir_exists("data-raw") & fs::file_exists("data-raw/cgfs.rds")) {
+#   stop("You have what it takes")
+# } else {
   fs::dir_create("data-raw")
   # datadownload -----------------------------------------------------------------
 
-  library(icesDatras)
-  years <- 2010:2021
+  years <- 1990:2022
   qs <- 4
   surveys <- "FR-CGFS"
   # res <- list()
-  for(y in 1:length(years)) {
-    print(years[y])
-    h   <- icesDatras::getHHdata(surveys, year = years[y], quarter = qs)
-    h   <- icesDatras::getHLdata(surveys, year = years[y], quarter = qs)
-  
-  }
-  raw <- bind_rows(res)
+  # hh <- hl <- tibble()
+  # y = 1
+  hh   <- 
+    tidydatras::dr_getdata("HH", surveys, years, qs) %>% 
+    tidydatras::dr_tidy() %>%                             # Make tidy with column specifications
+    tidydatras::dr_idunite(., remove = FALSE)             # Add identifier
+  hl   <- 
+    tidydatras::dr_getdata("HL", surveys, years, qs) %>% 
+    tidydatras::dr_tidy() %>%                             # Make tidy with column specifications
+    tidydatras::dr_idunite(., remove = FALSE) %>%         # Add identifier
+    tidydatras::dr_calccpue(hh) %>%                       # Calculated CPUE per hour
+    left_join(tidydatras::aphia_latin) %>%                # Add scientific name
+    left_join(tidydatras::asfis)                          # Add FAO species names and codes
 
-  # head(raw)
-  # icesDatras::checkSurveyYearOK("FR-CGFS", 2021)
-  # icesDatras::getHHdata("FR-CGFS", 2021, 4)
-  # icesDatras::getCPUELength("FR-CGFS", 2021, 4)
-  
   # results by year, length and station ------------------------------------------
   rbyls <-
-    raw |>
-    rename_all(tolower) |>
-    filter(year >= 2000) |>
-    rename(lon = shootlon,
+    hl |>
+    # filter(year >= 2000) |>
+    rename(lon = shootlong,
            lat = shootlat)
   # get rid of species that have all zeros
-  latin <-
+  species <-
     rbyls |>
     group_by(species) |>
     summarise(n = sum(cpue_number_per_hour)) |>
@@ -40,10 +42,10 @@ if(fs::dir_exists("data-raw") & fs::file_exists("data-raw/cgfs.rds")) {
     sort()
   rbyls <-
     rbyls |>
-    filter(species %in% latin) |>
-    unite("id", survey, year, quarter, ship, gear, haulno, remove = FALSE) |>
-    mutate(length = as.integer(floor(lngtclas / 10))) |>
-    group_by(id, year, lon, lat, species, length) |>
+    filter(species %in% species, cpue_number_per_hour > 0) |>
+    # unite("id", survey, year, quarter, ship, gear, haulno, remove = FALSE) |>
+    mutate(length = as.integer(floor(length ))) |>
+    group_by(id, year, lon, lat, species, latin, english_name, length) |>
     summarise(n = sum(cpue_number_per_hour),
               .groups = "drop")
 
@@ -51,15 +53,15 @@ if(fs::dir_exists("data-raw") & fs::file_exists("data-raw/cgfs.rds")) {
   # grid so that all lengths each year are filled. ensures correct estimates of
   #  the median by length and makes plotting easier
   g <- list()
-  for(i in 1:length(latin)) {
+  for(i in 1:length(species)) {
     length.range <-
       rbyls |>
-      filter(species == latin[i]) |>
-      summarise(min = min(length),
-                max = max(length))
+      filter(species == species[i]) |>
+      summarise(min = min(length, na.rm=TRUE),
+                max = max(length, na.rm=TRUE))
     g[[i]] <-
-      expand_grid(year = 2000:2022,
-                  species = latin[[i]],
+      expand_grid(year = as.character(years),
+                  species = species[[i]],
                   length = length.range$min:length.range$max)
   }
   g <- bind_rows(g)
@@ -71,16 +73,16 @@ if(fs::dir_exists("data-raw") & fs::file_exists("data-raw/cgfs.rds")) {
 
   rbyl <-
     rbyls |>
-    group_by(year, species, length) |>
+    group_by(year, species, latin, english_name, length) |>
     # Mean catch over all the stations
     summarise(N = mean(n),
               B = mean(b),
               .groups = "drop") |>
-    select(species, year, length, N, B)
+    dplyr::select(species, latin, english_name, year, length, N, B)
 
   rbys <-
     rbyls |>
-    group_by(id, year, lon, lat, species) |>
+    group_by(id, year, lon, lat, species, latin, english_name) |>
     summarise(N = sum(n),
               B = sum(b),
               .groups = "drop")
@@ -102,7 +104,7 @@ if(fs::dir_exists("data-raw") & fs::file_exists("data-raw/cgfs.rds")) {
 
   boot.N <-
     rbys |>
-    dplyr::group_by(species, year) %>%
+    dplyr::group_by(species, latin, english_name, year) %>%
     dplyr::do(my_boot(.$N)) %>%
     dplyr::mutate(variable = "N",
                   var = as.character(variable))
@@ -111,7 +113,7 @@ if(fs::dir_exists("data-raw") & fs::file_exists("data-raw/cgfs.rds")) {
 
   boot.B <-
     rbys %>%
-    dplyr::group_by(species, year) %>%
+    dplyr::group_by(species, latin, english_name, year) %>%
     dplyr::do(my_boot(.$B)) %>%
     dplyr::mutate(variable = "B",
                   var = as.character(var))
@@ -124,12 +126,12 @@ if(fs::dir_exists("data-raw") & fs::file_exists("data-raw/cgfs.rds")) {
   # results by length, used in the length frequency plot ----------------------b--
   rbl <-
     rbyl |>
-    group_by(species, length) |>
+    group_by(species, latin, english_name, length) |>
     summarise(N = mean(N),
               B = mean(B),
               .groups = "drop")
 
-  list(rbyl = rbyl, rbl = rbl, rbys = rbys, boot = boot, species = latin) |>
+  list(rbyl = rbyl, rbl = rbl, rbys = rbys, boot = boot, species = species, hh=hh, hl=hl) |>
     write_rds("data-raw/cgfs.rds")
 
-}
+# }
